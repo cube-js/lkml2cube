@@ -6,7 +6,7 @@ groups = ["default", "test"]
 cross_platform = true
 static_urls = false
 lock_version = "4.3"
-content_hash = "sha256:0565d23dfdc00d6dd19de36134374b6c7bca12f6c0bcfde2e30427a4f6ff8a2c"
+content_hash = "sha256:2c86f791aa383274e44bac7c41d995f73aa75602ae50fd27166f40a39a1ab616"
 
 [[package]]
 name = "click"
@@ -49,6 +49,15 @@ summary = "brain-dead simple config-ini parsing"
 files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
+]
+
+[[package]]
+name = "lkml"
+version = "1.3.1"
+summary = "A speedy LookML parser implemented in pure Python."
+files = [
+    {file = "lkml-1.3.1-py2.py3-none-any.whl", hash = "sha256:23fb8c340abe9380efa7682f1613bd448831e2525dbdb9f8d38fe39ce58f5434"},
+    {file = "lkml-1.3.1.tar.gz", hash = "sha256:33d2bb95be349661ad4ef8508f93302bc11177e8553bafdc2420c405a36b5371"},
 ]
 
 [[package]]
