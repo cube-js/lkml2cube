@@ -1,6 +1,8 @@
 import pprint
 import typer
+import yaml
 
+from lkml2cube.parser.explores import parse_explores
 from lkml2cube.parser.loader import file_loader
 from lkml2cube.parser.views import parse_view
 from typing_extensions import Annotated
@@ -30,7 +32,25 @@ def cubes(
         typer.echo(pprint.pformat(lookml_model))
         return
     
-    typer.echo(parse_view(lookml_model))
+    typer.echo(yaml.dump(parse_view(lookml_model)))
+
+
+@app.command()
+def views(
+    file_path: Annotated[str, typer.Argument(help="The path for the explore to read")],
+    parseonly: Annotated[bool, typer.Option(help=("When present it will only show the python"
+                                                  " dict read from the lookml file"))] = False
+    ):
+    """
+    Generate cubes-only given a LookML file that contains LookML Views.
+    """
+    
+    lookml_model = file_loader(file_path)
+    if parseonly:
+        typer.echo(pprint.pformat(lookml_model))
+        return
+    
+    typer.echo(parse_explores(lookml_model))
 
 if __name__ == "__main__":
     app()

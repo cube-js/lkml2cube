@@ -1,5 +1,4 @@
 
-import yaml
 import typer
 
 
@@ -14,7 +13,9 @@ def parse_view(lookml_model):
         'count': 'count',
         'yesno': 'boolean',
         'sum': 'sum',
+        'sum_distinct': 'sum',
         'average': 'avg',
+        'average_distinct': 'avg',
         'date': 'time',
         'time': 'time',
         'count_distinct': 'count_distinct_approx',
@@ -40,6 +41,10 @@ def parse_view(lookml_model):
         else:
             typer.echo(view)
             raise Exception(f'View type not implemented yet')
+        
+        if 'dimensions' not in view:
+            typer.echo('cube does not support models without dimensions')
+            continue
 
         for dimension in view['dimensions']:
             if 'type' not in dimension:
@@ -75,6 +80,10 @@ def parse_view(lookml_model):
                     raise Exception(f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}')
                 cube['dimensions'].append(cube_dimension)
 
+        if 'measures' not in view:
+            cubes.append(cube)
+            continue
+
         for measure in view['measures']:
             if measure['type'] not in type_map:
                 msg = f'Measure type: {measure["type"]} not implemented yet:\n# {measure}'
@@ -109,4 +118,4 @@ def parse_view(lookml_model):
     cube_def = {
         'cubes': cubes
     }
-    return yaml.dump(cube_def)
+    return cube_def
