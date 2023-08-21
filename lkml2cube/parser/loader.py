@@ -1,8 +1,10 @@
 import glob
 import lkml
 import typer
+import yaml
 
 from os.path import abspath, dirname, join
+from pathlib import Path
 
 visited_path = {}
 
@@ -35,3 +37,12 @@ def file_loader(file_path_input, namespace=None):
                 namespace = file_loader(join(root_dir, included_path), namespace=namespace)
         namespace = update_namespace(namespace, lookml_model)
     return namespace
+
+
+def write_files(cube_def, outputdir, file_name = 'my_cubes.yml'):
+    if 'cubes' in cube_def and len(cube_def['cubes']) == 1:
+        file_name = cube_def['cubes'][0]['name'] + '.yml'
+    Path(join(outputdir, 'cubes')).mkdir(parents=True, exist_ok=True)
+    f = open(join(outputdir, 'cubes', file_name), 'w')
+    f.write(yaml.dump(cube_def))
+    f.close()
