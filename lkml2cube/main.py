@@ -2,7 +2,7 @@ import pprint
 import typer
 import yaml
 
-from lkml2cube.parser.explores import parse_explores
+from lkml2cube.parser.explores import parse_explores, generate_cube_joins
 from lkml2cube.parser.loader import file_loader, write_files
 from lkml2cube.parser.views import parse_view
 from typing_extensions import Annotated
@@ -36,6 +36,7 @@ def cubes(
         return
     
     cube_def = parse_view(lookml_model)
+    cube_def = generate_cube_joins(cube_def, lookml_model)
     
     if printonly:
         typer.echo(yaml.dump(cube_def))
