@@ -79,6 +79,9 @@ def generate_cube_joins(cube_def, lookml_model):
                         cube_def['cubes'].append(cube)
                     else:
                         cube = get_cube_from_cube_def(cube_def, cube_right)
+                        if not cube:
+                            typer.echo(f'Cube referenced in explores not found: {join_element["name"]}')
+                            continue
 
                     join_condition = join_element['sql_on']
 
