@@ -39,7 +39,7 @@ def cubes(
     cube_def = generate_cube_joins(cube_def, lookml_model)
     
     if printonly:
-        typer.echo(yaml.dump(cube_def))
+        typer.echo(yaml.dump(cube_def, allow_unicode=True))
         return
     
     write_files(cube_def, outputdir=outputdir)
@@ -66,7 +66,7 @@ def views(
     cube_def = parse_explores(lookml_model)
 
     if printonly:
-        typer.echo(yaml.dump(cube_def))
+        typer.echo(yaml.dump(cube_def, allow_unicode=True))
         return
     
     write_files(cube_def, outputdir=outputdir)

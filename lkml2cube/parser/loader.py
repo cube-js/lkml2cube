@@ -48,7 +48,7 @@ def file_loader(file_path_input, namespace=None):
 def write_single_file(cube_def: dict, outputdir: str, subdir: str = 'cubes', file_name: str = 'my_cubes.yml'):
 
     f = open(join(outputdir, subdir, file_name), 'w')
-    f.write(yaml.dump(cube_def))
+    f.write(yaml.dump(cube_def, allow_unicode=True))
     f.close()
 
 
