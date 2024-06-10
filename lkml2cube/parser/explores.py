@@ -60,7 +60,7 @@ def traverse_graph(join_paths, cube_left, cube_right):
                     queue.append(new_path)
 
     typer.echo(f"Cubes are not reachable: {cube_left}, {cube_right}")
-    return ".".join(cube_left, cube_right)
+    return ".".join([cube_left, cube_right])
 
 
 def generate_cube_joins(cube_def, lookml_model):
