@@ -50,8 +50,8 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
             elif 'derived_table' in view and 'sql' in view['derived_table']:
                 cube['sql'] = view['derived_table']['sql']
             else:
-                typer.echo(view)
-                raise Exception(f'View type not implemented yet')
+                typer.echo(f'View type not implemented yet: {view['name']}')
+                continue
             
             if 'dimensions' not in view:
                 typer.echo('cube does not support models without dimensions')
@@ -62,14 +62,18 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                     # Defaults to string, cube needs a type.
                     dimension['type'] = 'string'
                 if dimension['type'] not in type_map:
-                    raise Exception(f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}')
+                    typer.echo(f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}')
+                    continue
                 cube_dimension = {
                     'name': dimension['name'],
                     'sql': rpl_table(dimension['sql']),
                     'type': type_map[dimension['type']]
                 }
                 if dimension['type'] == 'tier':
-                    bins = dimension['bins']
+                    bins = dimension.get('bins', dimension.get('tiers'))
+                    if not bins:
+                        typer.echo(f'Dimension type: {dimension["type"]} requires tiers')
+                        continue
                     if len(bins) < 2:
                         pass
                     else:
@@ -82,13 +86,13 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
 
             if 'dimension_groups' in view:
                 for dimension in view['dimension_groups']:
+                    if 'type' not in dimension:
+                        typer.echo(f'Dimension type: is required for {dimension.get("name")}')
                     cube_dimension = {
                         'name': dimension['name'],
                         'sql': rpl_table(dimension['sql']),
                         'type': type_map[dimension['type']]
                     }
-                    if 'type' not in dimension:
-                        raise Exception(f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}')
                     cube['dimensions'].append(cube_dimension)
 
             if 'measures' not in view:
@@ -98,11 +102,8 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
             for measure in view['measures']:
                 if measure['type'] not in type_map:
                     msg = f'Measure type: {measure["type"]} not implemented yet:\n# {measure}'
-                    if measure["type"] in ('list', 'sum_distinct'):
-                        typer.echo(f'# {msg}')
-                        continue
-                    else:
-                        raise Exception(msg)
+                    typer.echo(f'# {msg}')
+                    continue
                 cube_measure = {
                     'name': measure['name'],
                     'type': type_map[measure['type']]
