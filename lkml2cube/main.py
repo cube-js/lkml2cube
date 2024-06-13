@@ -38,12 +38,15 @@ def cubes(
     printonly: Annotated[
         bool, typer.Option(help="Print to stdout the parsed files")
     ] = False,
+    rootdir: Annotated[
+        str, typer.Option(help="The path to prepend to include paths")
+    ] = None,
 ):
     """
     Generate cubes-only given a LookML file that contains LookML Views.
     """
 
-    lookml_model = file_loader(file_path)
+    lookml_model = file_loader(file_path, rootdir)
 
     if lookml_model is None:
         typer.echo(f"No files were found on path: {file_path}")
@@ -81,12 +84,15 @@ def views(
     printonly: Annotated[
         bool, typer.Option(help="Print to stdout the parsed files")
     ] = False,
+    rootdir: Annotated[
+        str, typer.Option(help="The path to prepend to include paths")
+    ] = None,
 ):
     """
     Generate cubes-only given a LookML file that contains LookML Views.
     """
 
-    lookml_model = file_loader(file_path)
+    lookml_model = file_loader(file_path, rootdir)
 
     if lookml_model is None:
         typer.echo(f"No files were found on path: {file_path}")

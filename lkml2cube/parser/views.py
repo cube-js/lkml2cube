@@ -1,4 +1,4 @@
-
+import copy
 import traceback
 import typer
 
@@ -7,126 +7,143 @@ from pprint import pformat
 
 def parse_view(lookml_model, raise_when_views_not_present=True):
     cubes = []
-    cube_def = {
-        'cubes': cubes
-    }
-    rpl_table = lambda s: s.replace('${TABLE}', '{CUBE}').replace('${', '{')
+    cube_def = {"cubes": cubes}
+    rpl_table = lambda s: s.replace("${TABLE}", "{CUBE}").replace("${", "{")
     type_map = {
-        'zipcode': 'string',
-        'string': 'string',
-        'number': 'number',
-        'tier': 'number',
-        'count': 'count',
-        'yesno': 'boolean',
-        'sum': 'sum',
-        'sum_distinct': 'sum',
-        'average': 'avg',
-        'average_distinct': 'avg',
-        'date': 'time',
-        'time': 'time',
-        'count_distinct': 'count_distinct_approx',
+        "zipcode": "string",
+        "string": "string",
+        "number": "number",
+        "tier": "number",
+        "count": "count",
+        "yesno": "boolean",
+        "sum": "sum",
+        "sum_distinct": "sum",
+        "average": "avg",
+        "average_distinct": "avg",
+        "date": "time",
+        "time": "time",
+        "count_distinct": "count_distinct_approx",
     }
     sets = {}
-    
-    if raise_when_views_not_present and 'views' not in lookml_model:
-        raise Exception(f'The following object types are not implemented yet: {lookml_model.keys()}')
-    elif 'views' not in lookml_model:
+
+    if raise_when_views_not_present and "views" not in lookml_model:
+        raise Exception(
+            f"The following object types are not implemented yet: {lookml_model.keys()}"
+        )
+    elif "views" not in lookml_model:
         return cube_def
-    
-    for view in lookml_model['views']:
+
+    for view in lookml_model["views"]:
         try:
-            if 'sets' in view:
-                for set in view['sets']:
-                    sets[set['name']] = set['fields']
+            if "sets" in view:
+                for set in view["sets"]:
+                    sets[set["name"]] = set["fields"]
 
+            label = view.get("label", view.get("view_label", view["name"]))
             cube = {
-                'name': view['name'],
-                'dimensions': [],
-                'measures': [],
-                'joins': []
+                "name": view["name"],
+                "description": label,
+                "dimensions": [],
+                "measures": [],
+                "joins": [],
             }
-            if 'sql_table_name' in view:
-                cube['sql_table'] = view['sql_table_name']
-            elif 'derived_table' in view and 'sql' in view['derived_table']:
-                cube['sql'] = view['derived_table']['sql']
-            else:
-                typer.echo(f'View type not implemented yet: {view['name']}')
-                continue
-            
-            if 'dimensions' not in view:
-                typer.echo('cube does not support models without dimensions')
-                continue
 
-            for dimension in view['dimensions']:
-                if 'type' not in dimension:
+            if "extends" in view or "extends__all" in view:
+                extended_views = view.get("extends", view.get("extends__all", []))
+                extended_views = [x for l in extended_views for x in l]
+                parent_views = []
+                for lkml_view in extended_views:
+                    found = False
+                    for view_item in lookml_model["views"]:
+                        if lkml_view == view_item["name"]:
+                            parent_views.append(view_item)
+                            found = True
+                    if not found:
+                        typer.echo(f"View not found: {lkml_view}")
+                parent_views.append(view)
+
+                # MRO is left to right
+                view = copy.deepcopy(parent_views.pop(0))
+                while len(parent_views) > 0:
+                    next_view = parent_views.pop(0)
+                    view.update(next_view)
+
+            if "sql_table_name" in view:
+                cube["sql_table"] = view["sql_table_name"]
+            elif "derived_table" in view and "sql" in view["derived_table"]:
+                cube["sql"] = view["derived_table"]["sql"]
+
+            for dimension in view.get("dimensions", []):
+                if "type" not in dimension:
                     # Defaults to string, cube needs a type.
-                    dimension['type'] = 'string'
-                if dimension['type'] not in type_map:
-                    typer.echo(f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}')
+                    dimension["type"] = "string"
+                if dimension["type"] not in type_map:
+                    typer.echo(
+                        f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}'
+                    )
                     continue
                 cube_dimension = {
-                    'name': dimension['name'],
-                    'sql': rpl_table(dimension['sql']),
-                    'type': type_map[dimension['type']]
+                    "name": dimension["name"],
+                    "sql": rpl_table(dimension["sql"]),
+                    "type": type_map[dimension["type"]],
                 }
-                if dimension['type'] == 'tier':
-                    bins = dimension.get('bins', dimension.get('tiers'))
+                if dimension["type"] == "tier":
+                    bins = dimension.get("bins", dimension.get("tiers"))
                     if not bins:
-                        typer.echo(f'Dimension type: {dimension["type"]} requires tiers')
+                        typer.echo(
+                            f'Dimension type: {dimension["type"]} requires tiers'
+                        )
                         continue
                     if len(bins) < 2:
                         pass
                     else:
-                        tier_sql = f'CASE '
+                        tier_sql = f"CASE "
                         for i in range(0, len(bins) - 1):
                             tier_sql += f" WHEN {cube_dimension['sql']} >= {bins[i]} AND {cube_dimension['sql']} < {bins[i + 1]} THEN {bins[i]} "
-                        tier_sql += 'ELSE NULL END'
-                        cube_dimension['sql'] = tier_sql
-                cube['dimensions'].append(cube_dimension)
+                        tier_sql += "ELSE NULL END"
+                        cube_dimension["sql"] = tier_sql
+                cube["dimensions"].append(cube_dimension)
 
-            if 'dimension_groups' in view:
-                for dimension in view['dimension_groups']:
-                    if 'type' not in dimension:
-                        typer.echo(f'Dimension type: is required for {dimension.get("name")}')
-                    cube_dimension = {
-                        'name': dimension['name'],
-                        'sql': rpl_table(dimension['sql']),
-                        'type': type_map[dimension['type']]
-                    }
-                    cube['dimensions'].append(cube_dimension)
+            for dimension in view.get("dimension_groups", []):
+                if "type" not in dimension:
+                    typer.echo(
+                        f'Dimension type: is required for {dimension.get("name")}'
+                    )
+                cube_dimension = {
+                    "name": dimension["name"],
+                    "sql": rpl_table(dimension["sql"]),
+                    "type": type_map[dimension["type"]],
+                }
+                cube["dimensions"].append(cube_dimension)
 
-            if 'measures' not in view:
-                cubes.append(cube)
-                continue
-
-            for measure in view['measures']:
-                if measure['type'] not in type_map:
+            for measure in view.get("measures", []):
+                if measure["type"] not in type_map:
                     msg = f'Measure type: {measure["type"]} not implemented yet:\n# {measure}'
-                    typer.echo(f'# {msg}')
+                    typer.echo(f"# {msg}")
                     continue
                 cube_measure = {
-                    'name': measure['name'],
-                    'type': type_map[measure['type']]
+                    "name": measure["name"],
+                    "type": type_map[measure["type"]],
                 }
-                if measure['type'] != 'count':
-                    cube_measure['sql'] = rpl_table(measure['sql'])
-                elif 'drill_fields' in measure:
+                if measure["type"] != "count":
+                    cube_measure["sql"] = rpl_table(measure["sql"])
+                elif "drill_fields" in measure:
                     drill_members = []
-                    for drill_field in measure['drill_fields']:
-                        if '*' in drill_field:
-                            drill_field = drill_field.replace('*', '')
+                    for drill_field in measure["drill_fields"]:
+                        if "*" in drill_field:
+                            drill_field = drill_field.replace("*", "")
                             if drill_field not in sets:
-                                typer.echo(f'set undefined {drill_field}')
+                                typer.echo(f"set undefined {drill_field}")
                             else:
                                 drill_members += sets[drill_field]
                         else:
                             drill_members.append(drill_field)
-                        cube_measure['drill_members'] = drill_members
+                        cube_measure["drill_members"] = drill_members
 
-                cube['measures'].append(cube_measure)
+                cube["measures"].append(cube_measure)
 
             cubes.append(cube)
         except Exception:
-            typer.echo(f'Error while parsing view: {pformat(view)}')
+            typer.echo(f"Error while parsing view: {pformat(view)}")
             typer.echo(traceback.format_exc())
     return cube_def
