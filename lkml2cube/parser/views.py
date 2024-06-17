@@ -3,6 +3,7 @@ import traceback
 import rich
 
 from pprint import pformat
+from lkml2cube.parser.types import type_map, literal_unicode
 
 console = rich.console.Console()
 
@@ -11,21 +12,6 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
     cubes = []
     cube_def = {"cubes": cubes}
     rpl_table = lambda s: s.replace("${TABLE}", "{CUBE}").replace("${", "{")
-    type_map = {
-        "zipcode": "string",
-        "string": "string",
-        "number": "number",
-        "tier": "number",
-        "count": "count",
-        "yesno": "boolean",
-        "sum": "sum",
-        "sum_distinct": "sum",
-        "average": "avg",
-        "average_distinct": "avg",
-        "date": "time",
-        "time": "time",
-        "count_distinct": "count_distinct_approx",
-    }
     sets = {}
 
     if raise_when_views_not_present and "views" not in lookml_model:
@@ -68,6 +54,14 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                 view = copy.deepcopy(parent_views.pop(0))
                 while len(parent_views) > 0:
                     next_view = parent_views.pop(0)
+                    for elements in (
+                        "dimensions",
+                        "filters",
+                        "measures",
+                        "dimension_groups",
+                    ):
+                        if elements in next_view and elements in view:
+                            next_view[elements] = next_view[elements] + view[elements]
                     view.update(next_view)
 
             if "sql_table_name" in view:
@@ -75,21 +69,49 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
             elif "derived_table" in view and "sql" in view["derived_table"]:
                 cube["sql"] = view["derived_table"]["sql"]
 
-            for dimension in view.get("dimensions", []):
+            if "sql" in cube:
+                cube["sql"] = literal_unicode(rpl_table(cube["sql"]))
+
+            dimensions = (
+                view.get("dimensions", [])
+                + view.get("filters", [])
+                + view.get("dimension_groups", [])
+            )
+            filters = {element["name"]: True for element in view.get("filters", [])}
+
+            for dimension in dimensions:
                 if "type" not in dimension:
                     # Defaults to string, cube needs a type.
                     dimension["type"] = "string"
+                # validate schema
+                skip_dim = False
                 if dimension["type"] not in type_map:
                     console.print(
                         f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}',
                         style="bold red",
                     )
+                    skip_dim = True
+                for property in ("sql", "name"):
+                    if property not in dimension:
+                        console.print(
+                            f"Dimension must have {property} property:\n {dimension}",
+                            style="bold red",
+                        )
+                if skip_dim:
                     continue
+
                 cube_dimension = {
                     "name": dimension["name"],
                     "sql": rpl_table(dimension["sql"]),
                     "type": type_map[dimension["type"]],
                 }
+
+                if "hidden" in dimension:
+                    cube_dimension["public"] = not bool(dimension["hidden"] == "yes")
+
+                if dimension["name"] in filters:
+                    cube_dimension["type"] = "boolean"
+
                 if dimension["type"] == "tier":
                     bins = dimension.get("bins", dimension.get("tiers"))
                     if not bins:
@@ -108,28 +130,20 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                         cube_dimension["sql"] = tier_sql
                 cube["dimensions"].append(cube_dimension)
 
-            for dimension in view.get("dimension_groups", []):
-                if "type" not in dimension:
-                    console.print(
-                        f'Dimension type: is required for {dimension.get("name")}',
-                        style="bold red",
-                    )
-                cube_dimension = {
-                    "name": dimension["name"],
-                    "sql": rpl_table(dimension["sql"]),
-                    "type": type_map[dimension["type"]],
-                }
-                cube["dimensions"].append(cube_dimension)
-
             for measure in view.get("measures", []):
                 if measure["type"] not in type_map:
                     msg = f'Measure type: {measure["type"]} not implemented yet:\n# {measure}'
                     console.print(f"# {msg}", style="bold red")
                     continue
+
                 cube_measure = {
                     "name": measure["name"],
                     "type": type_map[measure["type"]],
                 }
+
+                if "hidden" in measure:
+                    cube_measure["public"] = not bool(measure["hidden"] == "yes")
+
                 if measure["type"] != "count":
                     cube_measure["sql"] = rpl_table(measure["sql"])
                 elif "drill_fields" in measure:

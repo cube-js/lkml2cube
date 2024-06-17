@@ -165,3 +165,7 @@ cython_debug/
 cubes/
 views/
 examples/
+
+
+#macos
+.DS_STORE

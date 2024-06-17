@@ -122,7 +122,7 @@ def generate_cube_joins(cube_def, lookml_model):
     return cube_def
 
 
-def generate_cube_views(cube_def, lookml_model):
+def generate_cube_views(cube_def, lookml_model, use_explores_name=False):
     if "views" not in cube_def:
         cube_def["views"] = []
     if "explores" not in lookml_model or not lookml_model["explores"]:
@@ -133,12 +133,16 @@ def generate_cube_views(cube_def, lookml_model):
             label = explore.get("label", explore.get("view_label", explore["name"]))
             view_name = snakify(label)
             view = {
-                "name": view_name,
+                # concat _view to avoid name collision in Cube
+                "name": central_cube + "_view" if use_explores_name else view_name,
                 "description": label,
                 "cubes": [
                     {"join_path": central_cube, "includes": "*", "alias": view_name}
                 ],
             }
+
+            if "hidden" in explore:
+                view["public"] = not bool(explore["hidden"] == "yes")
 
             if "joins" not in explore or not explore["joins"]:
                 cube_def["views"].append(view)
@@ -180,7 +184,7 @@ def generate_cube_views(cube_def, lookml_model):
     return cube_def
 
 
-def parse_explores(lookml_model):
+def parse_explores(lookml_model, use_explores_name=False):
     # First we read all possible lookml views.
     cube_def = parse_view(lookml_model, raise_when_views_not_present=False)
     if "explores" not in lookml_model:
@@ -189,6 +193,6 @@ def parse_explores(lookml_model):
         )
     cube_def = generate_cube_joins(cube_def, lookml_model)
 
-    cube_def = generate_cube_views(cube_def, lookml_model)
+    cube_def = generate_cube_views(cube_def, lookml_model, use_explores_name)
 
     return cube_def

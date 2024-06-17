@@ -6,10 +6,18 @@ import yaml
 from lkml2cube.parser.explores import parse_explores, generate_cube_joins
 from lkml2cube.parser.loader import file_loader, write_files, print_summary
 from lkml2cube.parser.views import parse_view
+from lkml2cube.parser.types import (
+    folded_unicode,
+    literal_unicode,
+    folded_unicode_representer,
+    literal_unicode_representer,
+)
 from typing_extensions import Annotated
 
 app = typer.Typer()
 console = rich.console.Console()
+yaml.add_representer(folded_unicode, folded_unicode_representer)
+yaml.add_representer(literal_unicode, literal_unicode_representer)
 
 
 @app.callback()
@@ -90,6 +98,9 @@ def views(
     rootdir: Annotated[
         str, typer.Option(help="The path to prepend to include paths")
     ] = None,
+    use_explores_name: Annotated[
+        bool, typer.Option(help="Use explore names for cube view names")
+    ] = False,
 ):
     """
     Generate cubes-only given a LookML file that contains LookML Views.
@@ -105,7 +116,7 @@ def views(
         console.print(pprint.pformat(lookml_model))
         return
 
-    cube_def = parse_explores(lookml_model)
+    cube_def = parse_explores(lookml_model, use_explores_name)
 
     if printonly:
         console.print(yaml.dump(cube_def, allow_unicode=True))
