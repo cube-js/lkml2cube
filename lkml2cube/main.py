@@ -1,13 +1,15 @@
 import pprint
+import rich
 import typer
 import yaml
 
 from lkml2cube.parser.explores import parse_explores, generate_cube_joins
-from lkml2cube.parser.loader import file_loader, write_files
+from lkml2cube.parser.loader import file_loader, write_files, print_summary
 from lkml2cube.parser.views import parse_view
 from typing_extensions import Annotated
 
 app = typer.Typer()
+console = rich.console.Console()
 
 
 @app.callback()
@@ -15,7 +17,7 @@ def callback():
     """
     lkml2cube is a tool to convert LookML models into Cube data models.
     """
-    # typer.echo(("lkml2cube is a tool to convert LookML models into Cube data models.\n"
+    # console.print(("lkml2cube is a tool to convert LookML models into Cube data models.\n"
     #             "Use lkml2cube --help to see usage."))
     pass
 
@@ -49,21 +51,22 @@ def cubes(
     lookml_model = file_loader(file_path, rootdir)
 
     if lookml_model is None:
-        typer.echo(f"No files were found on path: {file_path}")
+        console.print(f"No files were found on path: {file_path}", style="bold red")
         raise typer.Exit()
 
     if parseonly:
-        typer.echo(pprint.pformat(lookml_model))
+        console.print(pprint.pformat(lookml_model))
         return
 
     cube_def = parse_view(lookml_model)
     cube_def = generate_cube_joins(cube_def, lookml_model)
 
     if printonly:
-        typer.echo(yaml.dump(cube_def, allow_unicode=True))
+        console.print(yaml.dump(cube_def, allow_unicode=True))
         return
 
-    write_files(cube_def, outputdir=outputdir)
+    summary = write_files(cube_def, outputdir=outputdir)
+    print_summary(summary)
 
 
 @app.command()
@@ -95,20 +98,21 @@ def views(
     lookml_model = file_loader(file_path, rootdir)
 
     if lookml_model is None:
-        typer.echo(f"No files were found on path: {file_path}")
+        console.print(f"No files were found on path: {file_path}", style="bold red")
         raise typer.Exit()
 
     if parseonly:
-        typer.echo(pprint.pformat(lookml_model))
+        console.print(pprint.pformat(lookml_model))
         return
 
     cube_def = parse_explores(lookml_model)
 
     if printonly:
-        typer.echo(yaml.dump(cube_def, allow_unicode=True))
+        console.print(yaml.dump(cube_def, allow_unicode=True))
         return
 
-    write_files(cube_def, outputdir=outputdir)
+    summary = write_files(cube_def, outputdir=outputdir)
+    print_summary(summary)
 
 
 if __name__ == "__main__":

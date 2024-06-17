@@ -1,12 +1,13 @@
 import glob
 import lkml
-import typer
+import rich
 import yaml
 
 from os.path import abspath, dirname, join
 from pathlib import Path
 
 visited_path = {}
+console = rich.console.Console()
 
 
 def update_namespace(namespace, new_file):
@@ -23,7 +24,7 @@ def update_namespace(namespace, new_file):
         elif key in ("connection"):
             pass  # ignored keys
         else:
-            typer.echo(f"Key not supported yet: {key}")
+            console.print(f"Key not supported yet: {key}", style="bold red")
     return namespace
 
 
@@ -69,6 +70,8 @@ def write_single_file(
 
 def write_files(cube_def, outputdir):
 
+    summary = {"cubes": [], "views": []}
+
     if not cube_def:
         raise Exception("No cube definition available")
 
@@ -79,23 +82,54 @@ def write_files(cube_def, outputdir):
             Path(join(outputdir, cube_root_element)).mkdir(parents=True, exist_ok=True)
 
             if len(cube_def[cube_root_element]) == 1:
+                file_name = cube_def[cube_root_element][0]["name"] + ".yml"
                 write_single_file(
                     cube_def=cube_def,
                     outputdir=outputdir,
                     subdir=cube_root_element,
-                    file_name=cube_def[cube_root_element][0]["name"] + ".yml",
+                    file_name=file_name,
+                )
+                summary[cube_root_element].append(
+                    {
+                        "name": cube_def[cube_root_element][0]["name"],
+                        "path": str(
+                            Path(join(outputdir, cube_root_element, file_name))
+                        ),
+                    }
                 )
 
             elif len(cube_def[cube_root_element]) > 1:
                 for cube_element in cube_def[cube_root_element]:
                     new_def = {cube_root_element: [cube_element]}
+                    file_name = cube_element["name"] + ".yml"
                     write_single_file(
                         cube_def=new_def,
                         outputdir=outputdir,
                         subdir=cube_root_element,
-                        file_name=cube_element["name"] + ".yml",
+                        file_name=file_name,
+                    )
+                    summary[cube_root_element].append(
+                        {
+                            "name": cube_element["name"],
+                            "path": str(
+                                Path(join(outputdir, cube_root_element, file_name))
+                            ),
+                        }
                     )
             else:
                 # Empty 'cubes' definition
                 # not expected but not invalid
                 pass
+
+    return summary
+
+
+def print_summary(summary):
+    for cube_root_element in ("cubes", "views"):
+        table = rich.table.Table(title=f"Generated {cube_root_element}")
+        table.add_column("Element Name", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Path", style="magenta")
+        for row in summary[cube_root_element]:
+            table.add_row(row["name"], row["path"])
+        if len(summary[cube_root_element]) > 0:
+            console.print(table)

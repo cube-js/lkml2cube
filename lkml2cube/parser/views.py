@@ -1,8 +1,10 @@
 import copy
 import traceback
-import typer
+import rich
 
 from pprint import pformat
+
+console = rich.console.Console()
 
 
 def parse_view(lookml_model, raise_when_views_not_present=True):
@@ -59,7 +61,7 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                             parent_views.append(view_item)
                             found = True
                     if not found:
-                        typer.echo(f"View not found: {lkml_view}")
+                        console.print(f"View not found: {lkml_view}", style="bold red")
                 parent_views.append(view)
 
                 # MRO is left to right
@@ -78,8 +80,9 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                     # Defaults to string, cube needs a type.
                     dimension["type"] = "string"
                 if dimension["type"] not in type_map:
-                    typer.echo(
-                        f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}'
+                    console.print(
+                        f'Dimension type: {dimension["type"]} not implemented yet:\n {dimension}',
+                        style="bold red",
                     )
                     continue
                 cube_dimension = {
@@ -90,8 +93,9 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                 if dimension["type"] == "tier":
                     bins = dimension.get("bins", dimension.get("tiers"))
                     if not bins:
-                        typer.echo(
-                            f'Dimension type: {dimension["type"]} requires tiers'
+                        console.print(
+                            f'Dimension type: {dimension["type"]} requires tiers',
+                            style="bold red",
                         )
                         continue
                     if len(bins) < 2:
@@ -106,8 +110,9 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
 
             for dimension in view.get("dimension_groups", []):
                 if "type" not in dimension:
-                    typer.echo(
-                        f'Dimension type: is required for {dimension.get("name")}'
+                    console.print(
+                        f'Dimension type: is required for {dimension.get("name")}',
+                        style="bold red",
                     )
                 cube_dimension = {
                     "name": dimension["name"],
@@ -119,7 +124,7 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
             for measure in view.get("measures", []):
                 if measure["type"] not in type_map:
                     msg = f'Measure type: {measure["type"]} not implemented yet:\n# {measure}'
-                    typer.echo(f"# {msg}")
+                    console.print(f"# {msg}", style="bold red")
                     continue
                 cube_measure = {
                     "name": measure["name"],
@@ -133,7 +138,9 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                         if "*" in drill_field:
                             drill_field = drill_field.replace("*", "")
                             if drill_field not in sets:
-                                typer.echo(f"set undefined {drill_field}")
+                                console.print(
+                                    f"set undefined {drill_field}", style="bold red"
+                                )
                             else:
                                 drill_members += sets[drill_field]
                         else:
@@ -144,6 +151,8 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
 
             cubes.append(cube)
         except Exception:
-            typer.echo(f"Error while parsing view: {pformat(view)}")
-            typer.echo(traceback.format_exc())
+            console.print(
+                f"Error while parsing view: {pformat(view)}", style="bold red"
+            )
+            console.print(traceback.format_exc())
     return cube_def

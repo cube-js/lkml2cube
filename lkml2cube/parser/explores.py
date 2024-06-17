@@ -1,12 +1,13 @@
 import re
 import traceback
-import typer
+import rich
 
 from pprint import pformat
 
 from lkml2cube.parser.views import parse_view
 
 snake_case = r"\{([a-zA-Z]+(?:_[a-zA-Z]+)*\.[a-zA-Z]+(?:_[a-zA-Z]+)*)\}"
+console = rich.console.Console()
 
 
 def snakify(s):
@@ -59,7 +60,9 @@ def traverse_graph(join_paths, cube_left, cube_right):
                     new_path = tmp_path + [cube]
                     queue.append(new_path)
 
-    typer.echo(f"Cubes are not reachable: {cube_left}, {cube_right}")
+    console.print(
+        f"Cubes are not reachable: {cube_left}, {cube_right}", style="bold red"
+    )
     return ".".join([cube_left, cube_right])
 
 
@@ -92,8 +95,9 @@ def generate_cube_joins(cube_def, lookml_model):
                     else:
                         cube = get_cube_from_cube_def(cube_def, cube_right)
                         if not cube:
-                            typer.echo(
-                                f'Cube referenced in explores not found: {join_element["name"]}'
+                            console.print(
+                                f'Cube referenced in explores not found: {join_element["name"]}',
+                                style="bold red",
                             )
                             continue
 
@@ -110,8 +114,10 @@ def generate_cube_joins(cube_def, lookml_model):
                         }
                     )
             except Exception:
-                typer.echo(f"Error while parsing explore: {pformat(explore)}")
-                typer.echo(traceback.format_exc())
+                console.print(
+                    f"Error while parsing explore: {pformat(explore)}", style="bold red"
+                )
+                console.print(traceback.format_exc())
 
     return cube_def
 
@@ -167,8 +173,10 @@ def generate_cube_views(cube_def, lookml_model):
             cube_def["views"].append(view)
 
         except Exception:
-            typer.echo(f"Error while parsing explore: {pformat(explore)}")
-            typer.echo(traceback.format_exc())
+            console.print(
+                f"Error while parsing explore: {pformat(explore)}", style="bold red"
+            )
+            console.print(traceback.format_exc())
     return cube_def
 
 
