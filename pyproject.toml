@@ -1,7 +1,7 @@
 
 [project]
 name = "lkml2cube"
-version = "0.2.4"
+version = "0.2.5"
 description = "Looker ML to Cube converter"
 authors = [
     {name = "Paco Valdez", email = "paco@cube.dev"},
