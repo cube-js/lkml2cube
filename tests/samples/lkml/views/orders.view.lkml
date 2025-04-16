@@ -28,6 +28,7 @@ view: orders {
   dimension: order_status {
     type: string
     sql: ${TABLE}."STATUS" ;;
+    description: "Order Status - The status of the order, making the description longer just to test correct parsing, adding some extra characters to make sure it is parsed correctly like ( a,b ) [ d, e]."
   }
 
   dimension: is_cancelled {
