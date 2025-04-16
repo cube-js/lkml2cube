@@ -41,5 +41,3 @@ class TestExamples:
         assert (
             generated_yaml == cube_model
         ), "Generated YAML does not match the expected YAML"
-
-        assert True
