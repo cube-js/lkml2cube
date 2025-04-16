@@ -23,7 +23,8 @@ lkml2cube = "lkml2cube.main:app"
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
-[tool.pdm.dev-dependencies]
+
+[dependency-groups]
 test = [
-    "pytest>=7.4.0",
+    "pytest>=8.3.5",
 ]

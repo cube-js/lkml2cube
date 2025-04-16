@@ -1,3 +1,14 @@
+import rich
+
+
+# console = rich.console.Console()
+class Console:
+    def print(self, s, *args):
+        print(s)
+
+
+console = Console()
+
 type_map = {
     "zipcode": "string",
     "string": "string",
