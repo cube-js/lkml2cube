@@ -1,13 +1,12 @@
 import re
 import traceback
-import rich
 
 from pprint import pformat
 
 from lkml2cube.parser.views import parse_view
+from lkml2cube.parser.types import console
 
 snake_case = r"\{([a-zA-Z]+(?:_[a-zA-Z]+)*\.[a-zA-Z]+(?:_[a-zA-Z]+)*)\}"
-console = rich.console.Console()
 
 
 def snakify(s):

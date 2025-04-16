@@ -6,8 +6,9 @@ import yaml
 from os.path import abspath, dirname, join
 from pathlib import Path
 
+from lkml2cube.parser.types import console
+
 visited_path = {}
-console = rich.console.Console()
 
 
 def update_namespace(namespace, new_file):

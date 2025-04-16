@@ -1,17 +1,17 @@
 import copy
 import traceback
-import rich
 
 from pprint import pformat
-from lkml2cube.parser.types import type_map, literal_unicode
-
-console = rich.console.Console()
+from lkml2cube.parser.types import type_map, literal_unicode, folded_unicode, console
 
 
 def parse_view(lookml_model, raise_when_views_not_present=True):
     cubes = []
     cube_def = {"cubes": cubes}
     rpl_table = lambda s: s.replace("${TABLE}", "{CUBE}").replace("${", "{")
+    convert_to_literal = lambda s: (
+        literal_unicode(rpl_table(s)) if "\n" in s else rpl_table(s)
+    )
     sets = {}
 
     if raise_when_views_not_present and "views" not in lookml_model:
@@ -102,9 +102,20 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
 
                 cube_dimension = {
                     "name": dimension["name"],
-                    "sql": rpl_table(dimension["sql"]),
+                    "sql": convert_to_literal(dimension["sql"]),
                     "type": type_map[dimension["type"]],
                 }
+
+                if "primary_key" in dimension:
+                    cube_dimension["primary_key"] = bool(
+                        dimension["primary_key"] == "yes"
+                    )
+
+                if "label" in dimension:
+                    cube_dimension["title"] = dimension["label"]
+
+                if "description" in dimension:
+                    cube_dimension["description"] = dimension["description"]
 
                 if "hidden" in dimension:
                     cube_dimension["public"] = not bool(dimension["hidden"] == "yes")
@@ -121,13 +132,17 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                         )
                         continue
                     if len(bins) < 2:
+                        console.print(
+                            f'Dimension type: {dimension["type"]} requires more than 1 tiers',
+                            style="bold red",
+                        )
                         pass
                     else:
                         tier_sql = f"CASE "
                         for i in range(0, len(bins) - 1):
                             tier_sql += f" WHEN {cube_dimension['sql']} >= {bins[i]} AND {cube_dimension['sql']} < {bins[i + 1]} THEN {bins[i]} "
                         tier_sql += "ELSE NULL END"
-                        cube_dimension["sql"] = tier_sql
+                        cube_dimension["sql"] = folded_unicode(tier_sql)
                 cube["dimensions"].append(cube_dimension)
 
             for measure in view.get("measures", []):
@@ -145,7 +160,7 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                     cube_measure["public"] = not bool(measure["hidden"] == "yes")
 
                 if measure["type"] != "count":
-                    cube_measure["sql"] = rpl_table(measure["sql"])
+                    cube_measure["sql"] = convert_to_literal(measure["sql"])
                 elif "drill_fields" in measure:
                     drill_members = []
                     for drill_field in measure["drill_fields"]:
