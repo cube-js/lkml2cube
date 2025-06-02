@@ -25,6 +25,18 @@ type_map = {
     "count_distinct": "count_distinct_approx",
 }
 
+reverse_type_map = {
+    "string": "string",
+    "number": "number",
+    "count": "count",
+    "boolean": "yesno",
+    "sum": "sum",
+    "avg": "average",
+    "time": "time",
+    "count_distinct": "count_distinct",
+    "count_distinct_approx": "count_distinct",
+}
+
 
 class folded_unicode(str):
     pass
