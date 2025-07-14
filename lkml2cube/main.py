@@ -3,8 +3,9 @@ import rich
 import typer
 import yaml
 
+from lkml2cube.parser.cube_api import meta_loader, parse_meta
 from lkml2cube.parser.explores import parse_explores, generate_cube_joins
-from lkml2cube.parser.loader import file_loader, write_files, print_summary
+from lkml2cube.parser.loader import file_loader, write_files, write_lookml_files, print_summary
 from lkml2cube.parser.views import parse_view
 from lkml2cube.parser.types import (
     folded_unicode,
@@ -123,6 +124,53 @@ def views(
         return
 
     summary = write_files(cube_def, outputdir=outputdir)
+    print_summary(summary)
+
+
+@app.command()
+def explores(
+    metaurl: Annotated[str, typer.Argument(help="The url for cube meta endpoint")],
+    token: Annotated[str, typer.Option(help="JWT token for Cube meta")],
+    parseonly: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "When present it will only show the python"
+                " dict read from the lookml file"
+            )
+        ),
+    ] = False,
+    outputdir: Annotated[
+        str, typer.Option(help="The path for the output files to be generated")
+    ] = ".",
+    printonly: Annotated[
+        bool, typer.Option(help="Print to stdout the parsed files")
+    ] = False,
+):
+    """
+    Generate cubes-only given a LookML file that contains LookML Views.
+    """
+
+    cube_model = meta_loader(
+        meta_url=metaurl,
+        token=token,
+    )
+
+    if cube_model is None:
+        console.print(f"No response received from: {metaurl}", style="bold red")
+        raise typer.Exit()
+
+    if parseonly:
+        console.print(pprint.pformat(cube_model))
+        return
+
+    lookml_model = parse_meta(cube_model)
+
+    if printonly:
+        console.print(yaml.dump(lookml_model, allow_unicode=True))
+        return
+
+    summary = write_lookml_files(lookml_model, outputdir=outputdir)
     print_summary(summary)
 
 
