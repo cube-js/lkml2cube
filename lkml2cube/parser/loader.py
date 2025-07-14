@@ -1,6 +1,8 @@
 import glob
 import lkml
 import rich
+import rich.table
+import rich.console
 import yaml
 
 from os.path import abspath, dirname, join
@@ -125,12 +127,227 @@ def write_files(cube_def, outputdir):
     return summary
 
 
+def write_lookml_files(lookml_model, outputdir):
+    """
+    Write LookML model to files in the output directory.
+    """
+    summary = {"views": [], "explores": []}
+    
+    if not lookml_model:
+        raise Exception("No LookML model available")
+    
+    for lookml_root_element in ("views", "explores"):
+        if lookml_root_element in lookml_model and lookml_model[lookml_root_element]:
+            
+            Path(join(outputdir, lookml_root_element)).mkdir(parents=True, exist_ok=True)
+            
+            for element in lookml_model[lookml_root_element]:
+                element_name = element.get("name")
+                if not element_name:
+                    continue
+                    
+                file_name = f"{element_name}.{lookml_root_element[:-1]}.lkml"
+                file_path = join(outputdir, lookml_root_element, file_name)
+                
+                # Generate LookML content
+                lookml_content = _generate_lookml_content(element, lookml_root_element[:-1])
+                
+                with open(file_path, "w") as f:
+                    f.write(lookml_content)
+                
+                summary[lookml_root_element].append({
+                    "name": element_name,
+                    "path": str(Path(file_path))
+                })
+    
+    return summary
+
+
+def _generate_lookml_content(element, element_type):
+    """
+    Generate LookML content for a view or explore element.
+    """
+    lines = []
+    name = element.get("name", "unnamed")
+    
+    lines.append(f"{element_type} {name} {{")
+    
+    if element_type == "view":
+        # Handle view-specific properties
+        if "label" in element:
+            lines.append(f'  label: "{element["label"]}"')
+        
+        if "sql_table_name" in element:
+            lines.append(f'  sql_table_name: {element["sql_table_name"]} ;;')
+        
+        if "derived_table" in element and "sql" in element["derived_table"]:
+            lines.append("  derived_table: {")
+            sql_content = element["derived_table"]["sql"]
+            if isinstance(sql_content, str) and "\n" in sql_content:
+                lines.append("    sql:")
+                for sql_line in sql_content.split("\n"):
+                    lines.append(f"      {sql_line}")
+                lines.append("    ;;")
+            else:
+                lines.append(f"    sql: {sql_content} ;;")
+            lines.append("  }")
+        
+        if "extends" in element and element["extends"]:
+            for extend in element["extends"]:
+                lines.append(f"  extends: [{extend}]")
+        
+        # Handle dimensions
+        if "dimensions" in element:
+            for dim in element["dimensions"]:
+                lines.extend(_generate_dimension_lines(dim))
+        
+        # Handle measures
+        if "measures" in element:
+            for measure in element["measures"]:
+                lines.extend(_generate_measure_lines(measure))
+        
+        # Handle filters
+        if "filters" in element:
+            for filter_def in element["filters"]:
+                lines.extend(_generate_filter_lines(filter_def))
+    
+    elif element_type == "explore":
+        # Handle explore-specific properties
+        if "label" in element:
+            lines.append(f'  label: "{element["label"]}"')
+        
+        # Add view_name if specified
+        if "view_name" in element:
+            lines.append(f"  view_name: {element['view_name']}")
+        
+        # Add joins
+        if "joins" in element and element["joins"]:
+            for join in element["joins"]:
+                lines.extend(_generate_join_lines(join))
+    
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def _generate_dimension_lines(dimension):
+    """
+    Generate LookML lines for a dimension.
+    """
+    lines = []
+    name = dimension.get("name", "unnamed")
+    lines.append(f"  dimension: {name} {{")
+    
+    if "label" in dimension:
+        lines.append(f'    label: "{dimension["label"]}"')
+    
+    if "description" in dimension and dimension["description"]:
+        lines.append(f'    description: "{dimension["description"]}"')
+    
+    if "type" in dimension:
+        lines.append(f'    type: {dimension["type"]}')
+    
+    if "sql" in dimension:
+        sql_content = dimension["sql"]
+        if isinstance(sql_content, str) and "\n" in sql_content:
+            lines.append("    sql:")
+            for sql_line in sql_content.split("\n"):
+                lines.append(f"      {sql_line}")
+            lines.append("    ;;")
+        else:
+            lines.append(f"    sql: {sql_content} ;;")
+    
+    if "hidden" in dimension and dimension["hidden"] == "yes":
+        lines.append("    hidden: yes")
+    
+    lines.append("  }")
+    return lines
+
+
+def _generate_measure_lines(measure):
+    """
+    Generate LookML lines for a measure.
+    """
+    lines = []
+    name = measure.get("name", "unnamed")
+    lines.append(f"  measure: {name} {{")
+    
+    if "label" in measure:
+        lines.append(f'    label: "{measure["label"]}"')
+    
+    if "description" in measure and measure["description"]:
+        lines.append(f'    description: "{measure["description"]}"')
+    
+    if "type" in measure:
+        lines.append(f'    type: {measure["type"]}')
+    
+    if "sql" in measure:
+        sql_content = measure["sql"]
+        if isinstance(sql_content, str) and "\n" in sql_content:
+            lines.append("    sql:")
+            for sql_line in sql_content.split("\n"):
+                lines.append(f"      {sql_line}")
+            lines.append("    ;;")
+        else:
+            lines.append(f"    sql: {sql_content} ;;")
+    
+    if "hidden" in measure and measure["hidden"] == "yes":
+        lines.append("    hidden: yes")
+    
+    lines.append("  }")
+    return lines
+
+
+def _generate_filter_lines(filter_def):
+    """
+    Generate LookML lines for a filter.
+    """
+    lines = []
+    name = filter_def.get("name", "unnamed")
+    lines.append(f"  filter: {name} {{")
+    
+    if "label" in filter_def:
+        lines.append(f'    label: "{filter_def["label"]}"')
+    
+    if "description" in filter_def and filter_def["description"]:
+        lines.append(f'    description: "{filter_def["description"]}"')
+    
+    if "type" in filter_def:
+        lines.append(f'    type: {filter_def["type"]}')
+    
+    lines.append("  }")
+    return lines
+
+
+def _generate_join_lines(join):
+    """
+    Generate LookML lines for a join.
+    """
+    lines = []
+    name = join.get("name", "unnamed")
+    lines.append(f"  join: {name} {{")
+    
+    if "type" in join:
+        lines.append(f"    type: {join['type']}")
+    
+    if "sql_on" in join:
+        lines.append(f"    sql_on: {join['sql_on']} ;;")
+    
+    if "relationship" in join:
+        lines.append(f"    relationship: {join['relationship']}")
+    
+    lines.append("  }")
+    return lines
+
+
 def print_summary(summary):
-    for cube_root_element in ("cubes", "views"):
-        table = rich.table.Table(title=f"Generated {cube_root_element}")
-        table.add_column("Element Name", justify="right", style="cyan", no_wrap=True)
-        table.add_column("Path", style="magenta")
-        for row in summary[cube_root_element]:
-            table.add_row(row["name"], row["path"])
-        if len(summary[cube_root_element]) > 0:
-            console.print(table)
+    # Use the proper Rich console for table rendering
+    rich_console = rich.console.Console()
+    
+    for cube_root_element in ("cubes", "views", "explores"):
+        if cube_root_element in summary and summary[cube_root_element]:
+            table = rich.table.Table(title=f"Generated {cube_root_element}")
+            table.add_column("Element Name", justify="right", style="cyan", no_wrap=True)
+            table.add_column("Path", style="magenta")
+            for row in summary[cube_root_element]:
+                table.add_row(row["name"], row["path"])
+            rich_console.print(table)

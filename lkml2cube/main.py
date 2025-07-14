@@ -5,7 +5,7 @@ import yaml
 
 from lkml2cube.parser.cube_api import meta_loader, parse_meta
 from lkml2cube.parser.explores import parse_explores, generate_cube_joins
-from lkml2cube.parser.loader import file_loader, write_files, print_summary
+from lkml2cube.parser.loader import file_loader, write_files, write_lookml_files, print_summary
 from lkml2cube.parser.views import parse_view
 from lkml2cube.parser.types import (
     folded_unicode,
@@ -165,14 +165,13 @@ def explores(
         return
 
     lookml_model = parse_meta(cube_model)
-    # cube_def = parse_explores(lookml_model, use_explores_name)
 
     if printonly:
         console.print(yaml.dump(lookml_model, allow_unicode=True))
         return
 
-    # summary = write_files(cube_def, outputdir=outputdir)
-    # print_summary(summary)
+    summary = write_lookml_files(lookml_model, outputdir=outputdir)
+    print_summary(summary)
 
 
 if __name__ == "__main__":
