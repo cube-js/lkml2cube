@@ -149,8 +149,13 @@ def write_lookml_files(lookml_model, outputdir):
                 file_name = f"{element_name}.{lookml_root_element[:-1]}.lkml"
                 file_path = join(outputdir, lookml_root_element, file_name)
                 
+                # Generate includes for explores
+                includes = None
+                if lookml_root_element == "explores":
+                    includes = _generate_includes_for_explore(element, lookml_model)
+                
                 # Generate LookML content
-                lookml_content = _generate_lookml_content(element, lookml_root_element[:-1])
+                lookml_content = _generate_lookml_content(element, lookml_root_element[:-1], includes)
                 
                 with open(file_path, "w") as f:
                     f.write(lookml_content)
@@ -163,12 +168,18 @@ def write_lookml_files(lookml_model, outputdir):
     return summary
 
 
-def _generate_lookml_content(element, element_type):
+def _generate_lookml_content(element, element_type, includes=None):
     """
     Generate LookML content for a view or explore element.
     """
     lines = []
     name = element.get("name", "unnamed")
+    
+    # Add includes for explores
+    if element_type == "explore" and includes:
+        for include in includes:
+            lines.append(f'include: "{include}"')
+        lines.append("")  # Empty line after includes
     
     lines.append(f"{element_type} {name} {{")
     
@@ -216,6 +227,12 @@ def _generate_lookml_content(element, element_type):
         if "label" in element:
             lines.append(f'  label: "{element["label"]}"')
         
+        if "description" in element:
+            lines.append(f'  description: "{element["description"]}"')
+        
+        if "hidden" in element and element["hidden"]:
+            lines.append(f"  hidden: yes")
+        
         # Add view_name if specified
         if "view_name" in element:
             lines.append(f"  view_name: {element['view_name']}")
@@ -245,6 +262,12 @@ def _generate_dimension_lines(dimension):
     
     if "type" in dimension:
         lines.append(f'    type: {dimension["type"]}')
+    
+    # Add primary_key if this looks like an ID field
+    if "primary_key" in dimension and dimension["primary_key"]:
+        lines.append("    primary_key: yes")
+    elif name.lower().endswith("_id") or name.lower() == "id":
+        lines.append("    primary_key: yes")
     
     if "sql" in dimension:
         sql_content = dimension["sql"]
@@ -290,6 +313,10 @@ def _generate_measure_lines(measure):
         else:
             lines.append(f"    sql: {sql_content} ;;")
     
+    # Add drill_fields for count measures
+    if measure.get("type") == "count":
+        lines.append("    drill_fields: [id, name]")
+    
     if "hidden" in measure and measure["hidden"] == "yes":
         lines.append("    hidden: yes")
     
@@ -326,17 +353,46 @@ def _generate_join_lines(join):
     name = join.get("name", "unnamed")
     lines.append(f"  join: {name} {{")
     
+    if "view_label" in join:
+        lines.append(f'    view_label: "{join["view_label"]}"')
+    
     if "type" in join:
         lines.append(f"    type: {join['type']}")
-    
-    if "sql_on" in join:
-        lines.append(f"    sql_on: {join['sql_on']} ;;")
     
     if "relationship" in join:
         lines.append(f"    relationship: {join['relationship']}")
     
+    if "sql_on" in join:
+        lines.append(f"    sql_on: {join['sql_on']} ;;")
+    
     lines.append("  }")
     return lines
+
+
+def _generate_includes_for_explore(explore, lookml_model):
+    """
+    Generate include statements for an explore based on the views it references.
+    """
+    includes = []
+    referenced_views = set()
+    
+    # Add the base view
+    if "view_name" in explore:
+        referenced_views.add(explore["view_name"])
+    
+    # Add joined views
+    if "joins" in explore:
+        for join in explore["joins"]:
+            referenced_views.add(join["name"])
+    
+    # Generate include paths for referenced views
+    for view_name in referenced_views:
+        # Check if the view exists in our model
+        view_exists = any(view["name"] == view_name for view in lookml_model.get("views", []))
+        if view_exists:
+            includes.append(f"/views/{view_name}.view.lkml")
+    
+    return includes
 
 
 def print_summary(summary):

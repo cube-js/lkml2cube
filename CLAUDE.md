@@ -47,6 +47,7 @@ The tool provides three main commands:
 - **Cube API Mapping**: 
   - Cube cubes (with `sql_table`/`sql`) → LookML views
   - Cube views (with `aliasMember` joins) → LookML explores with join definitions
+- **LookML Enhancement**: Generates production-ready LookML with includes, proper joins, primary keys, and drill fields
 
 ### File Structure
 - `examples/` - Contains sample output files (cubes and views)

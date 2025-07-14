@@ -184,7 +184,9 @@ def _parse_cube_view_to_explore(model: dict) -> dict:
         for cube_name in sorted(joined_cubes):
             join = {
                 "name": cube_name,
-                "type": "left_outer",  # Default join type
+                "view_label": cube_name.replace("_", " ").title(),
+                "type": "left_outer",  # Default join type  
+                "relationship": "many_to_one",  # Default relationship
                 # In a real implementation, you'd extract actual join conditions
                 # from the Cube model's join definitions
                 "sql_on": f"${{{primary_cube}.id}} = ${{{cube_name}.id}}"
