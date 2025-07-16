@@ -16,11 +16,19 @@ A comprehensive tool for bidirectional conversion between LookML and Cube data m
 pip install lkml2cube
 ```
 
-## Commands
+## Usage
+
+lkml2cube can be used both as a command-line tool and as a Python library:
+
+### Command Line Interface
+
+Use the CLI commands for quick conversions and automation:
+
+#### Commands
 
 lkml2cube provides three main commands for different conversion scenarios:
 
-### 1. `cubes` - LookML Views → Cube Models
+##### 1. `cubes` - LookML Views → Cube Models
 
 Converts LookML view files into Cube YAML definitions (cubes only).
 
@@ -35,7 +43,7 @@ lkml2cube cubes --parseonly path/to/orders.view.lkml
 lkml2cube cubes views/orders.view.lkml --outputdir models/ --rootdir ../my_project/
 ```
 
-### 2. `views` - LookML Explores → Cube Models  
+##### 2. `views` - LookML Explores → Cube Models  
 
 Converts LookML explore files into Cube YAML definitions (cubes + views with joins).
 
@@ -47,7 +55,7 @@ lkml2cube views path/to/sales_analysis.explore.lkml --outputdir examples/
 lkml2cube views --printonly path/to/sales_analysis.explore.lkml
 ```
 
-### 3. `explores` - Cube Meta API → LookML ✨ **NEW**
+##### 3. `explores` - Cube Meta API → LookML ✨ **NEW**
 
 Generates production-ready LookML files from Cube's meta API endpoint.
 
@@ -67,6 +75,79 @@ lkml2cube explores "https://your-cube.com/cubejs-api/v1/meta" \
   --token "your-jwt-token" \
   --printonly
 ```
+
+### Python API
+
+For programmatic usage, import and use the `LookMLConverter` class:
+
+```python
+from lkml2cube.converter import LookMLConverter
+
+# Initialize converter with options
+converter = LookMLConverter(
+    outputdir="./output",
+    rootdir="./models",
+    parseonly=False,
+    printonly=False,
+    use_explores_name=False
+)
+
+# Convert LookML views to Cube definitions
+result = converter.cubes("path/to/orders.view.lkml")
+print(f"Generated {len(result['summary']['cubes'])} cube files")
+
+# Convert LookML explores to Cube definitions with views
+result = converter.views("path/to/explores.lkml")
+print(f"Generated {len(result['summary']['views'])} view files")
+
+# Generate LookML from Cube API
+result = converter.explores("https://api.cube.dev/v1/meta", "jwt-token")
+print(f"Generated {len(result['summary']['views'])} LookML views")
+```
+
+#### Configuration Management
+
+The converter maintains state and can be reconfigured:
+
+```python
+# Update configuration
+converter.set_config(parseonly=True, outputdir="/tmp/new-output")
+
+# Get current configuration
+config = converter.get_config()
+print(f"Current output directory: {config['outputdir']}")
+
+# Validate files before processing
+file_paths = ["model1.lkml", "model2.lkml"]
+validation_results = converter.validate_files(file_paths)
+valid_files = [f for f, valid in validation_results.items() if valid]
+```
+
+#### Return Values
+
+All conversion methods return a dictionary with:
+
+- **parseonly=True**: `{'lookml_model': dict, 'parsed_model': str}`
+- **printonly=True**: `{'lookml_model': dict, 'cube_def': dict, 'yaml_output': str}`
+- **Default**: `{'lookml_model': dict, 'cube_def': dict, 'summary': dict}`
+
+The `summary` contains details about generated files:
+
+```python
+{
+  'cubes': [{'name': 'orders', 'path': '/output/cubes/orders.yml'}],
+  'views': [{'name': 'orders_view', 'path': '/output/views/orders_view.yml'}]
+}
+```
+
+#### Why Use the Python API?
+
+- **State Management**: Maintain configuration across multiple conversions
+- **Programmatic Control**: Integrate conversions into data pipelines
+- **Validation**: Check file validity before processing
+- **Error Handling**: Catch and handle conversion errors gracefully
+- **Batch Processing**: Process multiple files efficiently
+- **Custom Workflows**: Build complex conversion workflows
 
 ## What Gets Generated
 
@@ -140,6 +221,7 @@ explore order_analysis {
 
 The tool automatically handles LookML `include` statements and can resolve relative paths:
 
+**CLI:**
 ```sh
 # Use --rootdir to resolve include paths
 lkml2cube views explores/sales.explore.lkml \
@@ -147,10 +229,21 @@ lkml2cube views explores/sales.explore.lkml \
   --rootdir /path/to/lookml/project/
 ```
 
+**Python API:**
+```python
+# Set rootdir for include resolution
+converter = LookMLConverter(
+    rootdir="/path/to/lookml/project/",
+    outputdir="output/"
+)
+result = converter.views("explores/sales.explore.lkml")
+```
+
 ### Authentication for Cube API
 
 The `explores` command requires a valid JWT token for Cube authentication:
 
+**CLI:**
 ```sh
 # Get your token from Cube's authentication
 export CUBE_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -158,6 +251,83 @@ export CUBE_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 lkml2cube explores "https://your-cube.com/cubejs-api/v1/meta" \
   --token "$CUBE_TOKEN" \
   --outputdir looker_models/
+```
+
+**Python API:**
+```python
+# Use environment variables or pass token directly
+import os
+converter = LookMLConverter(outputdir="looker_models/")
+result = converter.explores(
+    "https://your-cube.com/cubejs-api/v1/meta",
+    os.getenv("CUBE_TOKEN")
+)
+```
+
+### Batch Processing
+
+The Python API makes it easy to process multiple files:
+
+```python
+from lkml2cube.converter import LookMLConverter
+from pathlib import Path
+
+converter = LookMLConverter(outputdir="output/")
+
+# Process all LookML files in a directory
+lookml_dir = Path("models/")
+for lkml_file in lookml_dir.glob("*.lkml"):
+    try:
+        print(f"Processing {lkml_file}...")
+        result = converter.cubes(str(lkml_file))
+        print(f"  ✓ Generated {len(result['summary']['cubes'])} cubes")
+    except Exception as e:
+        print(f"  ✗ Error processing {lkml_file}: {e}")
+
+# Validate files before processing
+file_paths = [str(f) for f in lookml_dir.glob("*.lkml")]
+validation_results = converter.validate_files(file_paths)
+valid_files = [f for f, valid in validation_results.items() if valid]
+print(f"Found {len(valid_files)} valid LookML files")
+```
+
+### Pipeline Integration
+
+Integrate lkml2cube into your data pipeline:
+
+```python
+from lkml2cube.converter import LookMLConverter
+import logging
+
+def sync_cube_to_lookml(cube_api_url: str, token: str, output_dir: str):
+    """Sync Cube models to LookML files."""
+    converter = LookMLConverter(outputdir=output_dir)
+    
+    try:
+        # Generate LookML from Cube API
+        result = converter.explores(cube_api_url, token)
+        
+        # Log results
+        views_count = len(result['summary']['views'])
+        explores_count = len(result['summary']['explores'])
+        
+        logging.info(f"Generated {views_count} LookML views")
+        logging.info(f"Generated {explores_count} LookML explores")
+        
+        return result['summary']
+        
+    except Exception as e:
+        logging.error(f"Failed to sync Cube to LookML: {e}")
+        raise
+
+# Use in your pipeline
+if __name__ == "__main__":
+    summary = sync_cube_to_lookml(
+        "https://your-cube.com/cubejs-api/v1/meta",
+        "your-jwt-token",
+        "looker_models/"
+    )
+    print(f"Sync complete: {summary}")
 ```
 
 ## Output Structure

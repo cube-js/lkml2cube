@@ -14,6 +14,21 @@ visited_path = {}
 
 
 def update_namespace(namespace, new_file):
+    """Update namespace with new file content, merging lists and handling conflicts.
+    
+    Args:
+        namespace (dict | None): Existing namespace dictionary or None.
+        new_file (dict): New file content to merge into namespace.
+    
+    Returns:
+        dict: Updated namespace with merged content.
+    
+    Example:
+        >>> namespace = {'views': [{'name': 'view1'}]}
+        >>> new_file = {'views': [{'name': 'view2'}]}
+        >>> update_namespace(namespace, new_file)
+        {'views': [{'name': 'view1'}, {'name': 'view2'}]}
+    """
 
     if namespace is None:
         return new_file
@@ -32,6 +47,25 @@ def update_namespace(namespace, new_file):
 
 
 def file_loader(file_path_input, rootdir_param, namespace=None):
+    """Load LookML files and resolve includes recursively.
+    
+    Args:
+        file_path_input (str): File path pattern to load (supports glob patterns).
+        rootdir_param (str | None): Root directory for resolving includes.
+        namespace (dict | None): Existing namespace to merge content into.
+    
+    Returns:
+        dict: Loaded LookML model with resolved includes.
+    
+    Raises:
+        FileNotFoundError: If specified file path cannot be found.
+        ValueError: If LookML file cannot be parsed.
+    
+    Example:
+        >>> namespace = file_loader('models/*.lkml', '/path/to/root')
+        >>> print(namespace['views'][0]['name'])
+        'my_view'
+    """
 
     file_paths = glob.glob(file_path_input)
     for file_path in file_paths:
@@ -65,6 +99,21 @@ def write_single_file(
     subdir: str = "cubes",
     file_name: str = "my_cubes.yml",
 ):
+    """Write a single cube definition to a YAML file.
+    
+    Args:
+        cube_def (dict): Cube definition to write.
+        outputdir (str): Output directory path.
+        subdir (str, optional): Subdirectory within output directory. Defaults to "cubes".
+        file_name (str, optional): Name of the output file. Defaults to "my_cubes.yml".
+    
+    Raises:
+        OSError: If output directory cannot be created or file cannot be written.
+    
+    Example:
+        >>> cube_def = {'cubes': [{'name': 'orders', 'sql_table': 'orders'}]}
+        >>> write_single_file(cube_def, '/output', 'cubes', 'orders.yml')
+    """
 
     f = open(join(outputdir, subdir, file_name), "w")
     f.write(yaml.dump(cube_def, allow_unicode=True))
@@ -72,6 +121,26 @@ def write_single_file(
 
 
 def write_files(cube_def, outputdir):
+    """Write cube definitions to separate files organized by type.
+    
+    Args:
+        cube_def (dict): Cube definitions containing 'cubes' and/or 'views' keys.
+        outputdir (str): Output directory path.
+    
+    Returns:
+        dict: Summary of written files with structure:
+            {'cubes': [{'name': str, 'path': str}], 'views': [{'name': str, 'path': str}]}
+    
+    Raises:
+        Exception: If no cube definition is provided.
+        OSError: If output directory cannot be created or files cannot be written.
+    
+    Example:
+        >>> cube_def = {'cubes': [{'name': 'orders'}], 'views': [{'name': 'orders_view'}]}
+        >>> summary = write_files(cube_def, '/output')
+        >>> print(summary['cubes'][0]['name'])
+        'orders'
+    """
 
     summary = {"cubes": [], "views": []}
 
@@ -128,8 +197,25 @@ def write_files(cube_def, outputdir):
 
 
 def write_lookml_files(lookml_model, outputdir):
-    """
-    Write LookML model to files in the output directory.
+    """Write LookML model to files in the output directory.
+    
+    Args:
+        lookml_model (dict): LookML model containing 'views' and/or 'explores' keys.
+        outputdir (str): Output directory path.
+    
+    Returns:
+        dict: Summary of written files with structure:
+            {'views': [{'name': str, 'path': str}], 'explores': [{'name': str, 'path': str}]}
+    
+    Raises:
+        Exception: If no LookML model is provided.
+        OSError: If output directory cannot be created or files cannot be written.
+    
+    Example:
+        >>> lookml_model = {'views': [{'name': 'orders'}], 'explores': [{'name': 'orders_explore'}]}
+        >>> summary = write_lookml_files(lookml_model, '/output')
+        >>> print(summary['views'][0]['name'])
+        'orders'
     """
     summary = {"views": [], "explores": []}
     
@@ -169,8 +255,23 @@ def write_lookml_files(lookml_model, outputdir):
 
 
 def _generate_lookml_content(element, element_type, includes=None):
-    """
-    Generate LookML content for a view or explore element.
+    """Generate LookML content for a view or explore element.
+    
+    Args:
+        element (dict): View or explore element definition.
+        element_type (str): Type of element ('view' or 'explore').
+        includes (list[str] | None): List of include statements to add.
+    
+    Returns:
+        str: Generated LookML content as a string.
+    
+    Example:
+        >>> element = {'name': 'orders', 'sql_table_name': 'orders'}
+        >>> content = _generate_lookml_content(element, 'view')
+        >>> print(content)
+        view orders {
+          sql_table_name: orders ;;
+        }
     """
     lines = []
     name = element.get("name", "unnamed")
@@ -247,8 +348,23 @@ def _generate_lookml_content(element, element_type, includes=None):
 
 
 def _generate_dimension_lines(dimension):
-    """
-    Generate LookML lines for a dimension.
+    """Generate LookML lines for a dimension.
+    
+    Args:
+        dimension (dict): Dimension definition containing name, type, sql, etc.
+    
+    Returns:
+        list[str]: List of LookML lines representing the dimension.
+    
+    Example:
+        >>> dimension = {'name': 'order_id', 'type': 'number', 'sql': '${TABLE}.id'}
+        >>> lines = _generate_dimension_lines(dimension)
+        >>> print('\n'.join(lines))
+        dimension: order_id {
+          type: number
+          primary_key: yes
+          sql: ${TABLE}.id ;;
+        }
     """
     lines = []
     name = dimension.get("name", "unnamed")
@@ -287,8 +403,23 @@ def _generate_dimension_lines(dimension):
 
 
 def _generate_measure_lines(measure):
-    """
-    Generate LookML lines for a measure.
+    """Generate LookML lines for a measure.
+    
+    Args:
+        measure (dict): Measure definition containing name, type, sql, etc.
+    
+    Returns:
+        list[str]: List of LookML lines representing the measure.
+    
+    Example:
+        >>> measure = {'name': 'total_orders', 'type': 'count', 'sql': '${TABLE}.id'}
+        >>> lines = _generate_measure_lines(measure)
+        >>> print('\n'.join(lines))
+        measure: total_orders {
+          type: count
+          sql: ${TABLE}.id ;;
+          drill_fields: [id, name]
+        }
     """
     lines = []
     name = measure.get("name", "unnamed")
@@ -325,8 +456,22 @@ def _generate_measure_lines(measure):
 
 
 def _generate_filter_lines(filter_def):
-    """
-    Generate LookML lines for a filter.
+    """Generate LookML lines for a filter.
+    
+    Args:
+        filter_def (dict): Filter definition containing name, type, description, etc.
+    
+    Returns:
+        list[str]: List of LookML lines representing the filter.
+    
+    Example:
+        >>> filter_def = {'name': 'date_filter', 'type': 'date', 'description': 'Filter by date'}
+        >>> lines = _generate_filter_lines(filter_def)
+        >>> print('\n'.join(lines))
+        filter: date_filter {
+          description: "Filter by date"
+          type: date
+        }
     """
     lines = []
     name = filter_def.get("name", "unnamed")
@@ -346,8 +491,23 @@ def _generate_filter_lines(filter_def):
 
 
 def _generate_join_lines(join):
-    """
-    Generate LookML lines for a join.
+    """Generate LookML lines for a join.
+    
+    Args:
+        join (dict): Join definition containing name, type, relationship, sql_on, etc.
+    
+    Returns:
+        list[str]: List of LookML lines representing the join.
+    
+    Example:
+        >>> join = {'name': 'customers', 'type': 'left_outer', 'relationship': 'many_to_one', 'sql_on': '${orders.customer_id} = ${customers.id}'}
+        >>> lines = _generate_join_lines(join)
+        >>> print('\n'.join(lines))
+        join: customers {
+          type: left_outer
+          relationship: many_to_one
+          sql_on: ${orders.customer_id} = ${customers.id} ;;
+        }
     """
     lines = []
     name = join.get("name", "unnamed")
@@ -370,8 +530,21 @@ def _generate_join_lines(join):
 
 
 def _generate_includes_for_explore(explore, lookml_model):
-    """
-    Generate include statements for an explore based on the views it references.
+    """Generate include statements for an explore based on the views it references.
+    
+    Args:
+        explore (dict): Explore definition containing view_name and joins.
+        lookml_model (dict): Complete LookML model to check for view existence.
+    
+    Returns:
+        list[str]: List of include file paths for the explore.
+    
+    Example:
+        >>> explore = {'name': 'orders', 'view_name': 'orders', 'joins': [{'name': 'customers'}]}
+        >>> lookml_model = {'views': [{'name': 'orders'}, {'name': 'customers'}]}
+        >>> includes = _generate_includes_for_explore(explore, lookml_model)
+        >>> print(includes)
+        ['/views/orders.view.lkml', '/views/customers.view.lkml']
     """
     includes = []
     referenced_views = set()
@@ -396,6 +569,18 @@ def _generate_includes_for_explore(explore, lookml_model):
 
 
 def print_summary(summary):
+    """Print a formatted summary of generated files using Rich tables.
+    
+    Args:
+        summary (dict): Summary dictionary containing file information with keys
+            'cubes', 'views', and/or 'explores', each containing lists of
+            {'name': str, 'path': str} dictionaries.
+    
+    Example:
+        >>> summary = {'cubes': [{'name': 'orders', 'path': '/output/cubes/orders.yml'}]}
+        >>> print_summary(summary)
+        # Displays a formatted table showing the generated files
+    """
     # Use the proper Rich console for table rendering
     rich_console = rich.console.Console()
     

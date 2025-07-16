@@ -6,8 +6,23 @@ def meta_loader(
     meta_url: str,
     token: str,
 ) -> dict:
-    """
-    Load the Cube meta API and return the model as a dictionary.
+    """Load the Cube meta API and return the model as a dictionary.
+    
+    Args:
+        meta_url (str): URL to the Cube meta API endpoint.
+        token (str): Authentication token for the API.
+    
+    Returns:
+        dict: Cube model data from the meta API.
+    
+    Raises:
+        ValueError: If no valid token is provided.
+        Exception: If the API request fails or returns non-200 status.
+    
+    Example:
+        >>> model = meta_loader('https://api.cube.dev/v1/meta', 'my-token')
+        >>> print(model['cubes'][0]['name'])
+        'orders'
     """
 
     if not token:
@@ -27,8 +42,19 @@ def meta_loader(
 
 
 def parse_members(members: list) -> list:
-    """
-    Parse measures and dimensions from the Cube meta model.
+    """Parse measures and dimensions from the Cube meta model.
+    
+    Args:
+        members (list): List of dimension or measure definitions from Cube meta.
+    
+    Returns:
+        list: List of parsed members in LookML format.
+    
+    Example:
+        >>> members = [{'name': 'total_sales', 'type': 'sum', 'sql': 'amount'}]
+        >>> parsed = parse_members(members)
+        >>> print(parsed[0]['name'])
+        'total_sales'
     """
 
     rpl_table = (
@@ -64,9 +90,22 @@ def parse_members(members: list) -> list:
 
 
 def parse_meta(cube_model: dict) -> dict:
-    """
-    Parse the Cube meta model and return a simplified version.
+    """Parse the Cube meta model and return a simplified version.
+    
     Separates Cube cubes (-> LookML views) from Cube views (-> LookML explores).
+    
+    Args:
+        cube_model (dict): Complete Cube model from meta API.
+    
+    Returns:
+        dict: LookML model with structure:
+            {'views': list, 'explores': list}
+    
+    Example:
+        >>> cube_model = {'cubes': [{'name': 'orders', 'sql_table': 'orders'}]}
+        >>> lookml_model = parse_meta(cube_model)
+        >>> print(lookml_model['views'][0]['name'])
+        'orders'
     """
 
     lookml_model = {
@@ -91,9 +130,23 @@ def parse_meta(cube_model: dict) -> dict:
 
 
 def _is_cube_view(model: dict) -> bool:
-    """
-    Determine if a Cube model is a view (has joins) or a cube (has its own data source).
+    """Determine if a Cube model is a view (has joins) or a cube (has its own data source).
+    
     Views typically have aliasMember references and no sql_table/sql property.
+    
+    Args:
+        model (dict): Cube model definition.
+    
+    Returns:
+        bool: True if the model is a view, False if it's a cube.
+    
+    Example:
+        >>> model = {'dimensions': [{'aliasMember': 'orders.id'}]}
+        >>> _is_cube_view(model)
+        True
+        >>> model = {'sql_table': 'orders', 'dimensions': [{'name': 'id'}]}
+        >>> _is_cube_view(model)
+        False
     """
     # Check if any dimensions or measures use aliasMember (indicating joins)
     has_alias_members = False
@@ -116,8 +169,21 @@ def _is_cube_view(model: dict) -> bool:
 
 
 def _parse_cube_to_view(model: dict) -> dict:
-    """
-    Parse a Cube cube into a LookML view.
+    """Parse a Cube cube into a LookML view.
+    
+    Args:
+        model (dict): Cube model definition.
+    
+    Returns:
+        dict: LookML view definition with dimensions, measures, and metadata.
+    
+    Example:
+        >>> model = {'name': 'orders', 'sql_table': 'orders', 'dimensions': [{'name': 'id', 'type': 'string'}]}
+        >>> view = _parse_cube_to_view(model)
+        >>> print(view['name'])
+        'orders'
+        >>> print(view['sql_table_name'])
+        'orders'
     """
     view = {
         "name": model.get("name"),
@@ -146,8 +212,24 @@ def _parse_cube_to_view(model: dict) -> dict:
 
 
 def _parse_cube_view_to_explore(model: dict) -> dict:
-    """
-    Parse a Cube view into a LookML explore with joins.
+    """Parse a Cube view into a LookML explore with joins.
+    
+    Args:
+        model (dict): Cube view model definition with aliasMember references.
+    
+    Returns:
+        dict: LookML explore definition with joins based on referenced cubes.
+    
+    Example:
+        >>> model = {
+        ...     'name': 'orders_analysis',
+        ...     'dimensions': [{'aliasMember': 'orders.id'}, {'aliasMember': 'customers.name'}]
+        ... }
+        >>> explore = _parse_cube_view_to_explore(model)
+        >>> print(explore['name'])
+        'orders_analysis'
+        >>> print(len(explore['joins']))
+        1
     """
     explore = {
         "name": model.get("name"),

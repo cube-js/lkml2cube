@@ -1,0 +1,9 @@
+
+    loaders:
+      - type: python
+        search_path: [lkml2cube]
+    renderer:
+      type: markdown
+      render_toc: true
+      render_module_header: true
+    
