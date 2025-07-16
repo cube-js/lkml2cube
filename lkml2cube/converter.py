@@ -304,6 +304,22 @@ class LookMLConverter:
                 results[file_path] = False
         return results
 
+    def clear_cache(self) -> None:
+        """Clear the global file loader cache.
+        
+        This method clears the visited_path cache used by the file_loader to prevent
+        circular includes. Useful for ensuring clean state between operations or
+        in testing scenarios.
+        
+        Example:
+            >>> converter = LookMLConverter()
+            >>> converter.cubes("models/orders.lkml")  # Populates cache
+            >>> converter.clear_cache()  # Clears cache
+            >>> converter.cubes("models/orders.lkml")  # Loads fresh from disk
+        """
+        from lkml2cube.parser import loader
+        loader.visited_path.clear()
+
     def __repr__(self) -> str:
         """Return string representation of the converter."""
         return (

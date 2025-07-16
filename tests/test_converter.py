@@ -533,3 +533,83 @@ class TestLookMLConverterYAMLConfiguration:
         converter1.set_config(parseonly=True)
         assert converter1.parseonly is True
         assert converter2.parseonly is False
+
+
+class TestLookMLConverterCacheManagement:
+    """Test cache management functionality."""
+
+    def test_clear_cache_method_exists(self):
+        """Test that clear_cache method exists and can be called."""
+        converter = LookMLConverter()
+        
+        # Method should exist and be callable
+        assert hasattr(converter, 'clear_cache')
+        assert callable(converter.clear_cache)
+        
+        # Should not raise any errors
+        converter.clear_cache()
+
+    def test_clear_cache_actually_clears_visited_path(self):
+        """Test that clear_cache actually clears the visited_path cache."""
+        from lkml2cube.parser import loader
+        
+        # Set up some dummy cache data
+        loader.visited_path['test_file.lkml'] = True
+        loader.visited_path['another_file.lkml'] = True
+        
+        # Verify cache has data
+        assert len(loader.visited_path) == 2
+        assert 'test_file.lkml' in loader.visited_path
+        assert 'another_file.lkml' in loader.visited_path
+        
+        # Clear cache using converter method
+        converter = LookMLConverter()
+        converter.clear_cache()
+        
+        # Verify cache is cleared
+        assert len(loader.visited_path) == 0
+        assert 'test_file.lkml' not in loader.visited_path
+        assert 'another_file.lkml' not in loader.visited_path
+
+    def test_clear_cache_with_empty_cache(self):
+        """Test that clear_cache works when cache is already empty."""
+        from lkml2cube.parser import loader
+        
+        # Ensure cache starts empty
+        loader.visited_path.clear()
+        assert len(loader.visited_path) == 0
+        
+        # Clear cache - should not raise any errors
+        converter = LookMLConverter()
+        converter.clear_cache()
+        
+        # Cache should still be empty
+        assert len(loader.visited_path) == 0
+
+    @patch('lkml2cube.converter.file_loader')
+    def test_clear_cache_integration_with_file_loading(self, mock_file_loader):
+        """Test that clear_cache works in integration with file loading operations."""
+        from lkml2cube.parser import loader
+        
+        # Mock the file loader to return a simple model
+        sample_lookml = {'views': [{'name': 'test_view'}]}
+        mock_file_loader.return_value = sample_lookml
+        
+        converter = LookMLConverter(parseonly=True)
+        
+        # First call should populate cache (through file_loader)
+        converter.cubes("test.lkml")
+        
+        # Manually add something to cache to simulate file_loader behavior
+        loader.visited_path['test.lkml'] = True
+        assert len(loader.visited_path) == 1
+        
+        # Clear cache
+        converter.clear_cache()
+        
+        # Cache should be empty
+        assert len(loader.visited_path) == 0
+        
+        # Another call should work normally
+        result = converter.cubes("test.lkml")
+        assert result['lookml_model'] == sample_lookml

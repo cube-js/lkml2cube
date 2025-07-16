@@ -12,6 +12,12 @@ rootdir = join(dirname(__file__), "samples")
 
 
 class TestExamples:
+    def setup_method(self):
+        """Set up test fixtures."""
+        # Clear the global visited_path cache to prevent interference between tests
+        from lkml2cube.parser import loader
+        loader.visited_path.clear()
+
     def test_simple_view(self):
         file_path = "lkml/views/orders.view.lkml"
         # print(join(rootdir, file_path))

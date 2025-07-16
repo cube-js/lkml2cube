@@ -18,8 +18,12 @@ lkml2cube is a Python CLI tool that converts LookML models into Cube data models
 
 📖 **Documentation Files**:
 - `docs/lkml2cube_main.md` - CLI commands and usage
-- `docs/lkml2cube_converter.md` - LookMLConverter Python API  
-- `docs/lkml2cube_parser.md` - Parser module functions and classes
+- `docs/lkml2cube_converter.md` - LookMLConverter Python API
+- `docs/lkml2cube_parser_cube_api.md` - Module to interact with Cube meta API
+- `docs/lkml2cube_parser_loader.md` - File loading and writing utilities
+- `docs/lkml2cube_parser_explores.md` - Module to convert LookML explores to Cube `view` definitions
+- `docs/lkml2cube_parser_types.md` - Custom YAML types for proper formatting
+- `docs/lkml2cube_parser_views.md` - Module to convert LookML views to Cube `cube` definitions
 
 ⚠️ **Required Workflow**: When modifying code → Update docstrings → Run `python scripts/generate_docs.py`
 
@@ -162,7 +166,11 @@ All methods return a dictionary with relevant data:
 The project maintains auto-generated documentation:
 - `docs/lkml2cube_main.md` - CLI commands and usage
 - `docs/lkml2cube_converter.md` - LookMLConverter Python API
-- `docs/lkml2cube_parser.md` - Parser module functions and classes
+- `docs/lkml2cube_parser_cube_api.md` - Module to interact with Cube meta API
+- `docs/lkml2cube_parser_loader.md` - File loading and writing utilities
+- `docs/lkml2cube_parser_explores.md` - Module to convert LookML explores to Cube `view` definitions
+- `docs/lkml2cube_parser_types.md` - Custom YAML types for proper formatting
+- `docs/lkml2cube_parser_views.md` - Module to convert LookML views to Cube `cube` definitions
 
 ### Documentation Maintenance Workflow
 
@@ -271,7 +279,11 @@ Before committing changes:
 **Key Files**:
 - `docs/lkml2cube_main.md` - CLI documentation
 - `docs/lkml2cube_converter.md` - Python API documentation
-- `docs/lkml2cube_parser.md` - Parser module documentation
+- `docs/lkml2cube_parser_cube_api.md` - Module to interact with Cube meta API
+- `docs/lkml2cube_parser_loader.md` - File loading and writing utilities
+- `docs/lkml2cube_parser_explores.md` - Module to convert LookML explores to Cube `view` definitions
+- `docs/lkml2cube_parser_types.md` - Custom YAML types for proper formatting
+- `docs/lkml2cube_parser_views.md` - Module to convert LookML views to Cube `cube` definitions
 - `scripts/generate_docs.py` - Documentation generation script
 
 **Remember**: Documentation first, code second. Always maintain docstrings!
