@@ -1,6 +1,7 @@
 # Table of Contents
 
 * [lkml2cube.parser.loader](#lkml2cube.parser.loader)
+  * [substitute\_constants](#lkml2cube.parser.loader.substitute_constants)
   * [update\_namespace](#lkml2cube.parser.loader.update_namespace)
   * [file\_loader](#lkml2cube.parser.loader.file_loader)
   * [write\_single\_file](#lkml2cube.parser.loader.write_single_file)
@@ -11,6 +12,34 @@
 <a id="lkml2cube.parser.loader"></a>
 
 # lkml2cube.parser.loader
+
+<a id="lkml2cube.parser.loader.substitute_constants"></a>
+
+#### substitute\_constants
+
+```python
+def substitute_constants(obj, constants)
+```
+
+Recursively substitute constants in strings using @{constant_name} syntax.
+
+**Arguments**:
+
+- `obj` _any_ - The object to process (can be dict, list, str, or any other type).
+- `constants` _dict_ - Dictionary mapping constant names to their values.
+  
+
+**Returns**:
+
+- `any` - The processed object with constants substituted.
+  
+
+**Example**:
+
+  >>> constants = {'city': 'Tokyo'}
+  >>> obj = {'label': '@{city} Users'}
+  >>> substitute_constants(obj, constants)
+- `{'label'` - 'Tokyo Users'}
 
 <a id="lkml2cube.parser.loader.update_namespace"></a>
 

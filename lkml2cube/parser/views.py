@@ -78,7 +78,7 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
                             parent_views.append(view_item)
                             found = True
                     if not found:
-                        console.print(f"View not found: {lkml_view}", style="bold red")
+                        console.print(f"View not found: {lkml_view}")
                 parent_views.append(view)
 
                 # MRO is left to right
@@ -179,7 +179,7 @@ def parse_view(lookml_model, raise_when_views_not_present=True):
             for measure in view.get("measures", []):
                 if measure["type"] not in type_map:
                     msg = f'Measure type: {measure["type"]} not implemented yet:\n# {measure}'
-                    console.print(f"# {msg}", style="bold red")
+                    console.print(f"# {msg}")
                     continue
 
                 cube_measure = {

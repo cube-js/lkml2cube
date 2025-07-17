@@ -13,6 +13,44 @@ from lkml2cube.parser.types import console
 visited_path = {}
 
 
+def substitute_constants(obj, constants):
+    """Recursively substitute constants in strings using @{constant_name} syntax.
+    
+    Args:
+        obj (any): The object to process (can be dict, list, str, or any other type).
+        constants (dict): Dictionary mapping constant names to their values.
+    
+    Returns:
+        any: The processed object with constants substituted.
+    
+    Example:
+        >>> constants = {'city': 'Tokyo'}
+        >>> obj = {'label': '@{city} Users'}
+        >>> substitute_constants(obj, constants)
+        {'label': 'Tokyo Users'}
+    """
+    if isinstance(obj, str):
+        # Replace @{constant_name} with the constant value
+        import re
+        pattern = r'@\{([^}]+)\}'
+        
+        def replace_constant(match):
+            constant_name = match.group(1)
+            if constant_name in constants:
+                return constants[constant_name]
+            else:
+                # Keep the original if constant not found
+                return match.group(0)
+        
+        return re.sub(pattern, replace_constant, obj)
+    elif isinstance(obj, dict):
+        return {key: substitute_constants(value, constants) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [substitute_constants(item, constants) for item in obj]
+    else:
+        return obj
+
+
 def update_namespace(namespace, new_file):
     """Update namespace with new file content, merging lists and handling conflicts.
     
@@ -37,12 +75,15 @@ def update_namespace(namespace, new_file):
             namespace[key] = namespace[key] + new_file[key]
         elif key in namespace and key in ("includes"):  # remove duplicates
             namespace[key] = list(set(namespace[key] + new_file[key]))
-        elif key in ("views", "explores", "includes"):
+        elif key in namespace and key in ("constants"):
+            # Merge constants - later ones override earlier ones
+            namespace[key].extend(new_file[key])
+        elif key in ("views", "explores", "includes", "constants"):
             namespace[key] = new_file[key]
         elif key in ("connection"):
             pass  # ignored keys
         else:
-            console.print(f"Key not supported yet: {key}", style="bold red")
+            console.print(f"Key not supported yet: {key}")
     return namespace
 
 
@@ -90,6 +131,15 @@ def file_loader(file_path_input, rootdir_param, namespace=None):
                     join(root_dir, included_path), rootdir_param, namespace=namespace
                 )
         namespace = update_namespace(namespace, lookml_model)
+    
+    # Apply constant substitution if constants are available
+    if namespace and "constants" in namespace:
+        # Convert constants list to dictionary for substitution
+        constants_dict = {}
+        for constant in namespace["constants"]:
+            constants_dict[constant["name"]] = constant["value"]
+        namespace = substitute_constants(namespace, constants_dict)
+    
     return namespace
 
 

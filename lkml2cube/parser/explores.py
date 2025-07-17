@@ -186,8 +186,7 @@ def generate_cube_joins(cube_def, lookml_model):
                         cube = get_cube_from_cube_def(cube_def, cube_right)
                         if not cube:
                             console.print(
-                                f'Cube referenced in explores not found: {join_element["name"]}',
-                                style="bold red",
+                                f'Cube referenced in explores not found: {join_element["name"]}'
                             )
                             continue
 
