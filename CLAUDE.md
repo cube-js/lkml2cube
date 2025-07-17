@@ -40,6 +40,7 @@ lkml2cube is a Python CLI tool that converts LookML models into Cube data models
 - Test samples are in `tests/samples/` with both `lkml/` and `cubeml/` subdirectories
 - Tests compare generated output against expected YAML files
 - `test_converter.py` provides comprehensive unit tests for the `LookMLConverter` class
+- Only run tests that are relevant to your changes to reduce token usage.
 
 ### Documentation Generation
 - **Generate docs**: `python scripts/generate_docs.py`
