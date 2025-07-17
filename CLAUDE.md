@@ -133,6 +133,7 @@ result = converter.explores("https://api.cube.dev/v1/meta", "jwt-token")
 - `set_config(**kwargs)` - Update configuration options
 - `get_config()` - Get current configuration
 - `validate_files(file_paths)` - Validate that files can be loaded
+- `clear_cache()` - Clear the file loader cache (see File Loader Caching section)
 
 #### Configuration Management
 The converter maintains state and can be reconfigured:
@@ -237,6 +238,35 @@ Run `python scripts/generate_docs.py` when:
 - Adding or removing classes
 - Updating docstrings for clarity
 
+### File Loader Caching Issue
+
+**IMPORTANT**: The file loader (`lkml2cube/parser/loader.py`) uses a global `visited_path` dictionary to track which files have been processed to prevent infinite recursion when resolving includes. This caching mechanism can cause issues in certain scenarios:
+
+#### Common Problems:
+1. **Test Failures**: When running multiple tests that load the same files, the cache may prevent files from being reloaded, causing tests to fail with `None` results
+2. **Stale Data**: In long-running processes or repeated calls, cached file paths may contain stale data
+3. **Development Issues**: When developing and testing, the cache might prevent seeing changes to included files
+
+#### Solutions:
+1. **Clear Cache Method**: The `LookMLConverter` class provides a `clear_cache()` method that resets the `visited_path` dictionary
+2. **Test Setup**: In tests, always call `visited_path.clear()` or `converter.clear_cache()` before loading files
+3. **Fresh State**: For reliable results, clear the cache between different file loading operations
+
+#### Example Usage:
+```python
+# In tests
+from lkml2cube.parser.loader import visited_path
+visited_path.clear()  # Clear cache before loading
+
+# Or using the converter
+converter = LookMLConverter()
+converter.clear_cache()  # Clear cache before operations
+result = converter.cubes("path/to/file.lkml")
+```
+
+#### Why This Happens:
+The `visited_path` is a module-level global variable that persists between function calls. This is necessary to prevent infinite recursion when files include each other, but can cause unexpected behavior when the same files are loaded multiple times in different contexts.
+
 ### Code Review Checklist
 
 Before committing changes:
@@ -245,6 +275,7 @@ Before committing changes:
 - [ ] Generated docs reflect the changes
 - [ ] Examples in docstrings are accurate
 - [ ] Parameter types and descriptions are correct
+- [ ] Tests clear the file loader cache when needed
 
 ## 🔒 Enforcement Rules
 
