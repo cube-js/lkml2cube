@@ -1,30 +1,7 @@
 import rich
 
 
-# console = rich.console.Console()
-class Console:
-    """Simple console wrapper for printing messages.
-    
-    This class provides a basic print interface compatible with Rich console
-    while falling back to standard print functionality.
-    """
-    
-    def print(self, s, *args):
-        """Print a message to the console.
-        
-        Args:
-            s (str): Message to print.
-            *args: Additional arguments (currently ignored).
-        
-        Example:
-            >>> console = Console()
-            >>> console.print("Hello world", style="bold")
-            Hello world
-        """
-        print(s)
-
-
-console = Console()
+console = rich.console.Console()
 
 type_map = {
     "zipcode": "string",
