@@ -1,7 +1,7 @@
-import rich
+from rich.console import Console
 
 
-console = rich.console.Console()
+console = Console()
 
 type_map = {
     "zipcode": "string",
