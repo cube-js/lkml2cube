@@ -139,23 +139,37 @@ def traverse_graph(join_paths, cube_left, cube_right):
 
 def generate_cube_joins(cube_def, lookml_model):
     """Generate cube join definitions from LookML explores.
-    
+
+    Each LookML join is emitted on the cube it joins **from** (the cube
+    appearing alongside the target in `sql_on`), pointing at the join
+    target, with the LookML relationship value preserved verbatim.
+
+    This matches Cube's convention that "the cube which defines the join
+    serves as a main table" (the LEFT side of the LEFT JOIN). Declaring on
+    the target cube instead would silently flip cardinality, since the
+    LookML relationship is described from the explore's perspective.
+    Cube traverses joins bidirectionally via Dijkstra, so a single-sided
+    declaration is sufficient — declaring on both sides would produce
+    redundant joins (see https://cube.dev/docs/product/data-modeling/reference/joins).
+
     Args:
         cube_def (dict): Existing cube definition to modify.
         lookml_model (dict): LookML model containing explores with joins.
-    
+
     Returns:
         dict: Updated cube definition with join information added to cubes.
-    
+
     Raises:
         Exception: If cube referenced in explores is not found.
-    
+
     Example:
         >>> cube_def = {'cubes': [{'name': 'orders'}, {'name': 'customers'}]}
         >>> lookml_model = {'explores': [{'joins': [{'name': 'customers', 'sql_on': '${orders.customer_id} = ${customers.id}', 'relationship': 'many_to_one'}]}]}
         >>> updated_def = generate_cube_joins(cube_def, lookml_model)
-        >>> print(updated_def['cubes'][1]['joins'][0]['name'])
-        'orders'
+        >>> print(updated_def['cubes'][0]['joins'][0]['name'])
+        customers
+        >>> print(updated_def['cubes'][0]['joins'][0]['relationship'])
+        many_to_one
     """
     if "explores" not in lookml_model or not lookml_model["explores"]:
         return cube_def
@@ -165,43 +179,50 @@ def generate_cube_joins(cube_def, lookml_model):
 
         for join_element in explore["joins"]:
             try:
-                cube_right = join_element["name"]
+                cube_target = join_element["name"]
 
+                # The non-target cube referenced in sql_on is the LEFT side
+                # of this hop. Cube wants the join declared on that cube.
                 joined_cubes = [
                     cube
                     for cube in get_cube_names_from_join_condition(
                         join_element["sql_on"]
                     )
-                    if cube != cube_right
+                    if cube != cube_target
                 ]
-                if joined_cubes:
-                    if "from" in join_element:
-                        cube = {
-                            "name": cube_right,
+                if not joined_cubes:
+                    continue
+                cube_left = joined_cubes[0]
+
+                # `from:` in a LookML join creates an aliased view that
+                # extends the source; emit it as an extending cube so the
+                # target name resolves before we attach the join.
+                if "from" in join_element:
+                    cube_def["cubes"].append(
+                        {
+                            "name": cube_target,
                             "extends": join_element["from"],
                             "shown": False,
                         }
-                        cube_def["cubes"].append(cube)
-                    else:
-                        cube = get_cube_from_cube_def(cube_def, cube_right)
-                        if not cube:
-                            console.print(
-                                f'Cube referenced in explores not found: {join_element["name"]}'
-                            )
-                            continue
-
-                    join_condition = join_element["sql_on"]
-
-                    if "joins" not in cube:
-                        cube["joins"] = []
-
-                    cube["joins"].append(
-                        {
-                            "name": joined_cubes[0],
-                            "sql": join_condition,
-                            "relationship": join_element["relationship"],
-                        }
                     )
+
+                cube = get_cube_from_cube_def(cube_def, cube_left)
+                if not cube:
+                    console.print(
+                        f"Cube referenced in explores not found: {cube_left}"
+                    )
+                    continue
+
+                if "joins" not in cube:
+                    cube["joins"] = []
+
+                cube["joins"].append(
+                    {
+                        "name": cube_target,
+                        "sql": join_element["sql_on"],
+                        "relationship": join_element["relationship"],
+                    }
+                )
             except Exception:
                 console.print(
                     f"Error while parsing explore: {pformat(explore)}", style="bold red"
